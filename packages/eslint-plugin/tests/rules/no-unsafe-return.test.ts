@@ -125,5 +125,47 @@ const foo = () => ([] as any[]);
         },
       ],
     }),
+    ...batchedSingleLineTests({
+      code: `
+function foo(): Set<string> { return new Set<any>(); }
+function foo(): Map<string, string> { return new Map<string, any>(); }
+function foo(): Set<string[]> { return new Set<any[]>(); }
+function foo(): Set<Set<Set<string>>> { return new Set<Set<Set<any>>>(); }
+      `,
+      errors: [
+        {
+          messageId: 'unsafeReturnAssignment',
+          data: {
+            sender: 'Set<any>',
+            receiver: 'Set<string>',
+          },
+          line: 2,
+        },
+        {
+          messageId: 'unsafeReturnAssignment',
+          data: {
+            sender: 'Map<string, any>',
+            receiver: 'Map<string, string>',
+          },
+          line: 3,
+        },
+        {
+          messageId: 'unsafeReturnAssignment',
+          data: {
+            sender: 'Set<any[]>',
+            receiver: 'Set<string[]>',
+          },
+          line: 4,
+        },
+        {
+          messageId: 'unsafeReturnAssignment',
+          data: {
+            sender: 'Set<Set<Set<any>>>',
+            receiver: 'Set<Set<Set<string>>>',
+          },
+          line: 5,
+        },
+      ],
+    }),
   ],
 });

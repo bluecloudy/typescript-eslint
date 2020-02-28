@@ -338,7 +338,18 @@ export function isAnyOrAnyArrayType(
   node: ts.Node,
   checker: ts.TypeChecker,
 ): boolean {
-  return isAnyType(node, checker) || isAnyArrayType(node, checker);
+  const type = checker.getTypeAtLocation(node);
+  return isTypeAnyType(type) || isTypeAnyArrayType(type, checker);
+}
+
+/**
+ * @returns true if the type is `any`, `any[]` or `readonly any[]`
+ */
+export function isTypeAnyOrAnyArrayType(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+): boolean {
+  return isTypeAnyType(type) || isTypeAnyArrayType(type, checker);
 }
 
 export const enum AnyType {
@@ -362,4 +373,57 @@ export function isAnyOrAnyArrayTypeDiscriminated(
     return AnyType.AnyArray;
   }
   return AnyType.Safe;
+}
+
+/**
+ * Does a simple check to see if there is an any being assigned to a non-any type.
+ *
+ * This also checks generic positions to ensure there's no unsafe sub-assignments.
+ * Note: in the case of generic positions, it makes the assumption that the two types are the same.
+ *
+ * @example See tests for examples
+ *
+ * @returns false if it's safe, or an object with the two types if it's unsafe
+ */
+export function isUnsafeAssignment(
+  type: ts.Type,
+  receiver: ts.Type,
+  checker: ts.TypeChecker,
+): false | { sender: ts.Type; receiver: ts.Type } {
+  if (isTypeReference(type) && isTypeReference(receiver)) {
+    // TODO - figure out how to handle cases like
+    /*
+    type Test<T> = { prop: T }
+    type Test2 = { prop: string }
+    declare const a: Test<any>;
+    const b: Test2 = a;
+    */
+    if (type.target !== receiver.target) {
+      return false;
+    }
+
+    const typeArguments = type.typeArguments ?? [];
+    const receiverTypeArguments = receiver.typeArguments ?? [];
+
+    for (let i = 0; i < typeArguments.length; i += 1) {
+      const arg = typeArguments[i];
+      const receiverArg = receiverTypeArguments[i];
+
+      if (!arg || !receiverArg) {
+        return false;
+      }
+
+      const unsafe = isUnsafeAssignment(arg, receiverArg, checker);
+      if (unsafe) {
+        return { sender: type, receiver };
+      }
+    }
+
+    return false;
+  }
+
+  if (isTypeAnyType(type) && !isTypeAnyType(receiver)) {
+    return { sender: type, receiver };
+  }
+  return false;
 }
