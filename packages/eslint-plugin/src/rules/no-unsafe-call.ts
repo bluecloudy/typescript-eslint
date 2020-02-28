@@ -1,7 +1,12 @@
+import {
+  TSESTree,
+  AST_NODE_TYPES,
+} from '@typescript-eslint/experimental-utils';
 import * as util from '../util';
-import { TSESTree } from '@typescript-eslint/experimental-utils';
 
-export default util.createRule({
+type MessageIds = 'unsafeCall' | 'unsafeNew';
+
+export default util.createRule<[], MessageIds>({
   name: 'no-unsafe-call',
   meta: {
     type: 'problem',
@@ -13,6 +18,7 @@ export default util.createRule({
     },
     messages: {
       unsafeCall: 'Unsafe call of an any typed value',
+      unsafeNew: 'Unsafe construction of an any type value',
     },
     schema: [],
   },
@@ -21,17 +27,27 @@ export default util.createRule({
     const { program, esTreeNodeToTSNodeMap } = util.getParserServices(context);
     const checker = program.getTypeChecker();
 
+    function checkCall(
+      node:
+        | TSESTree.CallExpression
+        | TSESTree.OptionalCallExpression
+        | TSESTree.NewExpression,
+      reportingNode: TSESTree.Expression = node.callee,
+      messageId: MessageIds = 'unsafeCall',
+    ): void {
+      const tsNode = esTreeNodeToTSNodeMap.get(node.callee);
+      if (util.isAnyType(tsNode, checker)) {
+        context.report({
+          node: reportingNode,
+          messageId: messageId,
+        });
+      }
+    }
+
     return {
-      'CallExpression, OptionalCallExpression'(
-        node: TSESTree.CallExpression | TSESTree.OptionalCallExpression,
-      ): void {
-        const tsNode = esTreeNodeToTSNodeMap.get(node.callee);
-        if (util.isAnyType(tsNode, checker)) {
-          context.report({
-            node: node.callee,
-            messageId: 'unsafeCall',
-          });
-        }
+      'CallExpression, OptionalCallExpression': checkCall,
+      NewExpression(node): void {
+        checkCall(node, node, 'unsafeNew');
       },
     };
   },

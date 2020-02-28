@@ -18,6 +18,9 @@ anyVar.a.b();
 
 nestedAny.prop();
 nestedAny.prop['a']();
+
+new anyVar();
+new nestedAny.prop();
 ```
 
 Examples of **correct** code for this rule:
@@ -28,6 +31,8 @@ declare const properlyTyped: { prop: { a: () => void } };
 nestedAny.prop.a();
 
 (() => {})();
+
+new Map();
 ```
 
 ## Related to

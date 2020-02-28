@@ -18,6 +18,7 @@ ruleTester.run('no-unsafe-call', rule, {
     'function foo(x: () => void) { x() }',
     'function foo(x?: { a: () => void }) { x?.a() }',
     'function foo(x: { a?: () => void }) { x.a?.() }',
+    'new Map()',
   ],
   invalid: [
     ...batchedSingleLineTests({
@@ -78,6 +79,26 @@ function foo(x: { a: any }) { x.a?.() }
           line: 4,
           column: 31,
           endColumn: 34,
+        },
+      ],
+    }),
+    ...batchedSingleLineTests({
+      code: `
+function foo(x: any) { new x() }
+function foo(x: { a: any }) { new x.a() }
+      `,
+      errors: [
+        {
+          messageId: 'unsafeNew',
+          line: 2,
+          column: 24,
+          endColumn: 31,
+        },
+        {
+          messageId: 'unsafeNew',
+          line: 3,
+          column: 31,
+          endColumn: 40,
         },
       ],
     }),
