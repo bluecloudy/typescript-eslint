@@ -1,12 +1,12 @@
 # Disallows returning any from a function (`no-unsafe-return`)
 
 Despite your best intentions, the `any` type can sometimes leak into your codebase.
-Member access on `any` typed variables is not checked at all by TypeScript, so it creates a potential safety hole, and source of bugs in your codebase.
+Returned `any` typed values not checked at all by TypeScript, so it creates a potential safety hole, and source of bugs in your codebase.
 
 ## Rule Details
 
 This rule disallows returning `any` or `any[]` from a function.
-This rule also warns against returning `any[]` to help prevent the potential safety hole of returning `any[]` when you have an explicit return type that is an array.
+This rule also compares the return type to the function's declared/inferred return type to ensure you don't return an unsafe `any` in a generic position to a receiver that's expecting a specific type. For example, it will error if you return `Set<any>` from a function declared as returning `Set<string>`.
 
 Examples of **incorrect** code for this rule:
 
@@ -40,6 +40,13 @@ const foo9 = () => {
 const foo10 = () => [] as any[];
 
 const foo11 = (): string[] => [1, 2, 3] as any[];
+
+// generic position examples
+function assignability1(): Set<string> {
+  return new Set<any>([1]);
+}
+type TAssign = () => Set<string>;
+const assignability2: TAssign = () => new Set<any>([true]);
 ```
 
 Examples of **correct** code for this rule:
@@ -54,6 +61,12 @@ function foo2() {
 
 const foo3 = () => [];
 const foo4 = () => ['a'];
+
+function assignability1(): Set<string> {
+  return new Set<string>(['foo']);
+}
+type TAssign = () => Set<string>;
+const assignability2: TAssign = () => new Set(['foo']);
 ```
 
 ## Related to
