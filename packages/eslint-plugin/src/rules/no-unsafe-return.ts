@@ -1,8 +1,9 @@
-import * as util from '../util';
 import {
   TSESTree,
   AST_NODE_TYPES,
 } from '@typescript-eslint/experimental-utils';
+import { isExpression } from 'tsutils';
+import * as util from '../util';
 
 export default util.createRule({
   name: 'no-unsafe-return',
@@ -66,7 +67,7 @@ export default util.createRule({
       }
 
       const functionNode = getParentFunctionNode(returnNode);
-      if (!functionNode?.returnType) {
+      if (!functionNode) {
         return;
       }
 
@@ -74,9 +75,18 @@ export default util.createRule({
       const returnNodeType = checker.getTypeAtLocation(
         esTreeNodeToTSNodeMap.get(returnNode),
       );
-      const functionType = checker.getTypeAtLocation(
-        esTreeNodeToTSNodeMap.get(functionNode),
-      );
+      const functionTSNode = esTreeNodeToTSNodeMap.get(functionNode);
+
+      // function expressions will not have their return type modified based on receiver typing
+      // so we have to use the contextual typing in these cases, i.e.
+      // const foo1: () => Set<string> = () => new Set<any>();
+      // the return type of the arrow function is Set<any> even though the variable is typed as Set<string>
+      let functionType = isExpression(functionTSNode)
+        ? util.getContextualType(checker, functionTSNode)
+        : checker.getTypeAtLocation(functionTSNode);
+      if (!functionType) {
+        functionType = checker.getTypeAtLocation(functionTSNode);
+      }
 
       for (const signature of functionType.getCallSignatures()) {
         const functionReturnType = signature.getReturnType();

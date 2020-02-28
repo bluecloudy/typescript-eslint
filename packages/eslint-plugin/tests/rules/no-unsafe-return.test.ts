@@ -167,5 +167,56 @@ function foo(): Set<Set<Set<string>>> { return new Set<Set<Set<any>>>(); }
         },
       ],
     }),
+    {
+      code: `
+        type Fn = () => Set<string>;
+        const foo1: Fn = () => new Set<any>();
+        const foo2: Fn = function test() { return new Set<any>() };
+      `,
+      errors: [
+        {
+          messageId: 'unsafeReturnAssignment',
+          line: 3,
+          data: {
+            sender: 'Set<any>',
+            receiver: 'Set<string>',
+          },
+        },
+        {
+          messageId: 'unsafeReturnAssignment',
+          line: 4,
+          data: {
+            sender: 'Set<any>',
+            receiver: 'Set<string>',
+          },
+        },
+      ],
+    },
+    {
+      code: `
+        type Fn = () => Set<string>;
+        function receiver(arg: Fn) {}
+        receiver(() => new Set<any>());
+        receiver(function test() { return new Set<any>() });
+      `,
+      errors: [
+        {
+          messageId: 'unsafeReturnAssignment',
+          line: 4,
+          data: {
+            sender: 'Set<any>',
+            receiver: 'Set<string>',
+          },
+        },
+        {
+          messageId: 'unsafeReturnAssignment',
+          line: 5,
+          data: {
+            sender: 'Set<any>',
+            receiver: 'Set<string>',
+          },
+        },
+      ],
+    },
   ],
 });
